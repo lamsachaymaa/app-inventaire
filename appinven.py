@@ -6,6 +6,13 @@ import os
 from google.oauth2.service_account import Credentials
 import gspread
 
+creds_dict = json.loads(st.secrets["GOOGLE_SHEETS_CREDENTIALS"])
+creds = Credentials.from_service_account_info(
+    creds_dict,
+    scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+)
+client = gspread.authorize(creds)
+
 # Liste des utilisateurs valides
 utilisateurs_valides = ["Bmehaini", "Mguerger", "Clamsalla"]
 
@@ -16,45 +23,28 @@ data = {
 }
 df_references = pd.DataFrame(data)
 
-# Fichier JSON téléchargé pour accéder à Google Sheets
-FICHIER_CLE = os.path.join(os.path.dirname(__file__), "json.json")
+
 
 # Fonction pour charger les références à partir de Google Sheets
 def charger_references_google():
     try:
-        creds = Credentials.from_service_account_file(
-            FICHIER_CLE,
-            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        )
-        
-        # Autoriser l'accès à Google Sheets
-        client = gspread.authorize(creds)
-        sheet = client.open("Inventaire_Emballages").sheet1  # Ouvre le Google Sheet "Inventaire_Emballages"
-        
-        # Charger les données depuis Google Sheets
-        valeurs = sheet.get_all_records()  # Récupère toutes les lignes sous forme de dictionnaire
+        sheet = client.open("Inventaire_Emballages").sheet1
+        valeurs = sheet.get_all_records()
         return valeurs
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données Google Sheets : {e}")
         return []
 
+
 # Fonction pour enregistrer des données dans Google Sheets
 def enregistrer_donnees_google(donnees):
     try:
-        creds = Credentials.from_service_account_file(
-            FICHIER_CLE,
-            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        )
-        
-        client = gspread.authorize(creds)
-        sheet = client.open("Inventaire_Emballages").sheet1  # Ouvre le Google Sheet "Inventaire_Emballages"
-        
-        # Mise à jour des données dans Google Sheets
+        sheet = client.open("Inventaire_Emballages").sheet1
         for data in donnees:
-            # Assure-toi d'ajouter une ligne dans Google Sheets avec les nouvelles données
             sheet.append_row([data["Inventoriste"], data["Référence"], data["Description"], data["Quantité"]])
     except Exception as e:
         st.error(f"Erreur lors de l'enregistrement dans Google Sheets : {e}")
+
 
 # Initialisation session utilisateur
 if "connecte" not in st.session_state:
@@ -152,8 +142,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
