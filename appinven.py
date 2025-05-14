@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import io
+import json
+import os
+from google.oauth2.service_account import Credentials
+import gspread
 
 # Liste des utilisateurs valides
 utilisateurs_valides = ["Bmehaini", "Mguerger", "Clamsalla"]
@@ -12,10 +16,47 @@ data = {
 }
 df_references = pd.DataFrame(data)
 
-# Initialisation session globale
-if "ref_globales" not in st.session_state:
-    st.session_state.ref_globales = []  # Liste de tous les enregistrements
+# Fichier JSON téléchargé pour accéder à Google Sheets
+FICHIER_CLE = os.path.join(os.path.dirname(__file__), "json.json")
 
+# Fonction pour charger les références à partir de Google Sheets
+def charger_references_google():
+    try:
+        creds = Credentials.from_service_account_file(
+            FICHIER_CLE,
+            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        )
+        
+        # Autoriser l'accès à Google Sheets
+        client = gspread.authorize(creds)
+        sheet = client.open("Inventaire_Emballages").sheet1  # Ouvre le Google Sheet "Inventaire_Emballages"
+        
+        # Charger les données depuis Google Sheets
+        valeurs = sheet.get_all_records()  # Récupère toutes les lignes sous forme de dictionnaire
+        return valeurs
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des données Google Sheets : {e}")
+        return []
+
+# Fonction pour enregistrer des données dans Google Sheets
+def enregistrer_donnees_google(donnees):
+    try:
+        creds = Credentials.from_service_account_file(
+            FICHIER_CLE,
+            scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        )
+        
+        client = gspread.authorize(creds)
+        sheet = client.open("Inventaire_Emballages").sheet1  # Ouvre le Google Sheet "Inventaire_Emballages"
+        
+        # Mise à jour des données dans Google Sheets
+        for data in donnees:
+            # Assure-toi d'ajouter une ligne dans Google Sheets avec les nouvelles données
+            sheet.append_row([data["Inventoriste"], data["Référence"], data["Description"], data["Quantité"]])
+    except Exception as e:
+        st.error(f"Erreur lors de l'enregistrement dans Google Sheets : {e}")
+
+# Initialisation session utilisateur
 if "connecte" not in st.session_state:
     st.session_state.connecte = False
 
@@ -42,8 +83,9 @@ def page_inventaire():
     utilisateur = st.session_state.utilisateur
     st.markdown(f"👤 Connecté en tant que **{utilisateur}**")
 
-    # Références déjà prises
-    refs_prises = [r["Référence"] for r in st.session_state.ref_globales]
+    # Charger références déjà inventoriées depuis Google Sheets
+    ref_globales = charger_references_google()
+    refs_prises = [r["Référence"] for r in ref_globales]
     df_disponibles = df_references[~df_references["Référence"].isin(refs_prises)]
 
     if df_disponibles.empty:
@@ -51,10 +93,14 @@ def page_inventaire():
         return
 
     refs_choisies = st.multiselect("Sélectionnez vos références :", df_disponibles["Référence"].tolist())
+    
+    if len(refs_choisies) == 0:
+        st.warning("Veuillez sélectionner au moins une référence pour l'inventaire.")
+        return
 
     df_selection = df_disponibles[df_disponibles["Référence"].isin(refs_choisies)]
-    resultats = []
 
+    resultats = []
     for _, row in df_selection.iterrows():
         qte = st.number_input(
             f"Quantité pour {row['Référence']} - {row['Description']}",
@@ -75,16 +121,15 @@ def page_inventaire():
         st.dataframe(df_resultats)
 
         if st.button("✅ Enregistrer mes données"):
-            # Enregistrer uniquement les références nouvelles
-            refs_existantes = [r["Référence"] for r in st.session_state.ref_globales]
-            nouvelles = [r for r in resultats if r["Référence"] not in refs_existantes]
-            st.session_state.ref_globales.extend(nouvelles)
-            st.success("Données enregistrées.")
+            # Enregistrer les nouvelles données dans Google Sheets
+            enregistrer_donnees_google(resultats)
+            st.success("Données enregistrées dans Google Sheets.")
 
-    # Génération du fichier Excel complet (visible à tout moment)
-    if len(st.session_state.ref_globales) > 0:
-        st.markdown("📥 Télécharger le fichier global d'inventaire")
-        df_final = pd.DataFrame(st.session_state.ref_globales)
+    # Génération du fichier Excel complet
+    ref_globales = charger_references_google()
+    if len(ref_globales) > 0:
+        st.markdown("📅 Télécharger le fichier global d'inventaire")
+        df_final = pd.DataFrame(ref_globales)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
