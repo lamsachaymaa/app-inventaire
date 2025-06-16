@@ -18,8 +18,8 @@ utilisateurs_valides = ["Bmehaini", "Mguerger", "Clamsalla"]
 
 # Données de références
 data = {
-    'Référence': ['CO-06280', 'FA-1412P2X', 'GE-03212', 'OP-V149', 'PC-00123', 'PC-00130', 'PC-54312','PC-54322', 'PC-56422','PC-R4312','PC-R6422','RN-00RC1','SN-03147','SN-04147','SN-06147','SN-CS130'],
-    'Description': ['Produit A', 'Produit B', 'Produit C', 'Produit D', 'Produit E', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F', 'Produit F']
+    'Référence': ['FA-1412P2X', 'GE-03212', 'OP-V149', 'PC-00123', 'PC-00130', 'PC-54312','PC-54322', 'PC-56422','PC-R4312','PC-R6422','RN-00RC1','SN-03147','SN-04147','SN-06147','SN-CS130'],
+    'Description': ['Traverse', 'Gefco', 'Opel', 'Sli vert', 'Longeron', 'Bac GP PSA', 'Bac GM PSA', 'Bac GG PSA', 'Bac Grenat', 'Bac Jaune AILN', 'Bac BP', 'Bac BM', 'Bac BG', 'Bac Bleu', 'Cons']
 }
 df_references = pd.DataFrame(data)
 
